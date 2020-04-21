@@ -86,6 +86,8 @@ How to run
           generateBasicOutputTable = TRUE,
           maxCores = maxCores)
   ```
+  
+3. E-mail the contents of the 'sccsDiagnostics' folder to the study coordinator.
 
 Support
 =======
