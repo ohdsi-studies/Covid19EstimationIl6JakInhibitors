@@ -80,7 +80,7 @@ runSelfControlledCaseSeries <- function(connectionDetails,
 }
 
 createTos <- function(outputFolder) {
-  pathToCsv <- system.file("settings", "TosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
+  pathToCsv <- system.file("settings", "tosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
   tosOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
   
   pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Covid19Il6JakInhibitorsSccs")
