@@ -2,6 +2,7 @@
 
 export(createCohorts)
 export(execute)
+export(exportResults)
 export(runSelfControlledCaseSeries)
 import(DatabaseConnector)
 importFrom(stats,qnorm)

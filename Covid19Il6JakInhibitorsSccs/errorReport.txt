@@ -1,0 +1,48 @@
+DBMS:
+pdw
+
+Error:
+com.microsoft.sqlserver.jdbc.SQLServerException: Ambiguous column name 'subject_id'.
+Invalid column name 'person_id'.
+Ambiguous column name 'subject_id'.
+
+SQL:
+CREATE TABLE  #exposure_outcome_cohort
+  WITH (LOCATION = USER_DB, DISTRIBUTION = HASH(subject_id)) AS
+SELECT
+DISTINCT  subject_id, exposure_outcome.cohort_definition_id,
+	exposure.cohort_start_date,
+	exposure.cohort_end_date
+
+FROM
+scratch.dbo.mschuemi_covid19sccs_mdcd outcome
+INNER JOIN #exposure_cohorts exposure
+	ON outcome.subject_id = exposure.subject_id
+INNER JOIN CDM_IBM_MDCD_V1105.dbo.observation_period
+	ON subject_id = outcome.person_id
+		AND DATEADD(DAY, 365, observation_period_start_date) <= outcome.cohort_start_date
+		AND observation_period_end_date >= outcome.cohort_start_date
+		AND DATEADD(DAY, 365, observation_period_start_date) <= exposure.cohort_start_date
+		AND observation_period_end_date >= exposure.cohort_start_date
+INNER JOIN #exposure_outcome exposure_outcome
+	ON exposure_id = exposure.cohort_definition_id
+		AND outcome_id = outcome.cohort_definition_id
+
+R version:
+R version 3.6.1 (2019-07-05)
+
+Platform:
+x86_64-w64-mingw32
+
+Attached base packages:
+- stats
+- graphics
+- grDevices
+- utils
+- datasets
+- methods
+- base
+
+Other attached packages:
+- Covid19Il6JakInhibitorsSccs (0.0.1)
+- DatabaseConnector (2.4.4)

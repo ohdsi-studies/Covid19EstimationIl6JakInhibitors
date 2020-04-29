@@ -25,6 +25,8 @@ cdmDatabaseSchema <- "CDM_IBM_CCAE_V1103.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 cohortTable <- "mschuemi_covid19sccs_ccae"
 oracleTempSchema <- NULL
+databaseName <- "IBM MarketScan Commercial Claims and Encounters Database"
+databaseDescription <- "IBM MarketScan® Commercial Claims and Encounters Database (CCAE) represent data from individuals enrolled in United States employer-sponsored insurance health plans. The data includes adjudicated health insurance claims (e.g. inpatient, outpatient, and outpatient pharmacy) as well as enrollment data from large employers and health plans who provide private healthcare coverage to employees, their spouses, and dependents. Additionally, it captures laboratory tests for a subset of the covered lives. This administrative claims database includes a variety of fee-for-service, preferred provider organizations, and capitated health plans."
 outputFolder <- file.path(studyFolder, databaseId)
 
 # MDCR settings
@@ -42,6 +44,9 @@ cohortDatabaseSchema <- "scratch.dbo"
 cohortTable <- "mschuemi_covid19sccs_mdcd"
 oracleTempSchema <- NULL
 outputFolder <- file.path(studyFolder, databaseId)
+databaseName <- "Truven Health MarketScan® Multi-State Medicaid Database"
+databaseDescription <- "Truven Health MarketScan® Multi-State Medicaid Database (MDCD) adjudicated US health insurance claims for Medicaid enrollees from multiple states and includes hospital discharge diagnoses, outpatient diagnoses and procedures, and outpatient pharmacy claims as well as ethnicity and Medicare eligibility. Members maintain their same identifier even if they leave the system for a brief period however the dataset lacks lab data. [For further information link to RWE site for Truven MDCD."
+
 
 # JMDC settings
 databaseId <- "JMDC"
@@ -74,8 +79,21 @@ execute(connectionDetails = connectionDetails,
         oracleTempSchema = oracleTempSchema,
         outputFolder = outputFolder,
         databaseId = databaseId,
-        createCohorts = TRUE,
+        createCohorts = FALSE,
         runSccs = TRUE,
         runSccsDiagnostics = TRUE,
-        generateBasicOutputTable = FALSE,
+        generateBasicOutputTable = TRUE,
         maxCores = maxCores)
+
+
+
+# Delete erroneous analyses
+pathToCsv <- system.file("settings", "tosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
+tosOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+outcomeIds <- unique(tosOfInterest$outcomeId)
+for (outcomeId in outcomeIds) {
+        filesToDelete <- list.files(outputFolder, sprintf("_o%s", outcomeId), recursive = TRUE, include.dirs = TRUE, full.names = TRUE)
+        unlink(filesToDelete, recursive = TRUE)
+}
+unlink(file.path(outputFolder, "sccsOutput", "SccsData_l1"), recursive = TRUE)
+unlink(file.path(outputFolder, "sccsSummary.csv"))
