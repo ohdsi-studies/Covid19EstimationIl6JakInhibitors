@@ -58,6 +58,7 @@ execute <- function(connectionDetails,
                     databaseId,
                     createCohorts = TRUE,
                     runSccs = TRUE,
+                    createCharacterization = TRUE,
                     runSccsDiagnostics = TRUE,
                     generateBasicOutputTable = TRUE,
                     maxCores = 4) {
@@ -98,6 +99,16 @@ execute <- function(connectionDetails,
                                 oracleTempSchema = oracleTempSchema,
                                 outputFolder = outputFolder,
                                 maxCores = maxCores)
+  }
+  
+  if (createCharacterization) {
+    ParallelLogger::logInfo("Creating characterization")
+    createCharacterization(connectionDetails = connectionDetails,
+                           cdmDatabaseSchema = cdmDatabaseSchema,
+                           cohortDatabaseSchema = cohortDatabaseSchema,
+                           cohortTable = cohortTable,
+                           oracleTempSchema = oracleTempSchema,
+                           outputFolder = outputFolder) 
   }
   
   if (runSccsDiagnostics) {
