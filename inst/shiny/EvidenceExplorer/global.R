@@ -1,7 +1,7 @@
 source("DataPulls.R")
 source("PlotsAndTables.R")
 
-shinySettings <- list(dataFolder = "G:/StudyResults/Covid19EstimationIl6JakInhibitors/shinyData", blind = TRUE)
+shinySettings <- list(dataFolder = "G:/StudyResults/Covid19EstimationIl6JakInhibitors/Open Claims/shinyData", blind = TRUE)
 dataFolder <- shinySettings$dataFolder
 blind <- shinySettings$blind
 connection <- NULL
