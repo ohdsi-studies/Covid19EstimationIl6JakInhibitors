@@ -16,15 +16,19 @@ Imports:
 	SelfControlledCaseSeries (>= 1.4.2),
     ParallelLogger,
     Cyclops,
+    FeatureExtraction,
     EmpiricalCalibration (>= 2.0.2),
     ff,
+    ffbase,
+    plyr,
     dplyr,
     tibble,
     readr
 Remotes:
-    ohdsi/ParallelLogger@develop,
+    ohdsi/ParallelLogger,
     ohdsi/Cyclops,
-    ohdsi/SelfControlledCaseSeries
+    ohdsi/SelfControlledCaseSeries,
+    ohdsi/FeatureExtraction
 NeedsCompilation: no
 RoxygenNote: 7.1.0
 Encoding: UTF-8

@@ -17,7 +17,7 @@
 #' @keywords internal
 "_PACKAGE"
 
-#' @importFrom utils read.csv write.csv
-#' @importFrom stats qnorm rnorm
+#' @importFrom utils read.csv write.csv setTxtProgressBar txtProgressBar write.table
+#' @importFrom stats qnorm rnorm aggregate quantile
 #' @import DatabaseConnector
 NULL

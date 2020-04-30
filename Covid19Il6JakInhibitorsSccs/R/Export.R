@@ -26,6 +26,7 @@
 #' @param databaseName          The full name of the database.
 #' @param databaseDescription   A short description (several sentences) of the database.
 #' @param minCellCount          The minimum cell count for fields contains person counts or fractions.
+#' @param exposureOfInterestLabel  The label used for the covariates that identify the exposure of interest, the 
 #' @param maxCores              How many parallel cores should be used? If more cores are made
 #'                              available this can speed up the analyses.
 #'
@@ -35,6 +36,7 @@ exportResults <- function(outputFolder,
                           databaseName,
                           databaseDescription,
                           minCellCount = 5,
+                          exposureOfInterestLabel = "Exposure of interest",
                           maxCores) {
   exportFolder <- file.path(outputFolder, "export")
   if (!file.exists(exportFolder)) {
@@ -55,19 +57,21 @@ exportResults <- function(outputFolder,
                  databaseId = databaseId,
                  databaseName = databaseName,
                  databaseDescription = databaseDescription,
-                 minCellCount = minCellCount)
-  
-  exportMainResults(outputFolder = outputFolder,
-                    exportFolder = exportFolder,
-                    databaseId = databaseId,
-                    minCellCount = minCellCount,
-                    maxCores = maxCores)
+                 minCellCount = minCellCount,
+                 exposureOfInterestLabel = exposureOfInterestLabel) 
   
   exportCharacterizations(outputFolder = outputFolder,
                           exportFolder = exportFolder,
                           databaseId = databaseId,
                           minCellCount = minCellCount,
                           maxCores = maxCores)
+  
+  exportMainResults(outputFolder = outputFolder,
+                    exportFolder = exportFolder,
+                    databaseId = databaseId,
+                    minCellCount = minCellCount,
+                    maxCores = maxCores,
+                    exposureOfInterestLabel = exposureOfInterestLabel)
   
   # Add all to zip file -------------------------------------------------------------------------------
   ParallelLogger::logInfo("Adding results to zip file")
@@ -141,8 +145,8 @@ exportOutcomes <- function(outputFolder, exportFolder) {
     cohortFileName <- system.file("cohorts", paste0(name, ".json"), package = "Covid19Il6JakInhibitorsSccs")
     definition <- readChar(cohortFileName, file.info(cohortFileName)$size)
     return(tibble::tibble(outcomeId = outcomeId,
-                      outcomeName = atlasName,
-                      definition = definition))
+                          outcomeName = atlasName,
+                          definition = definition))
   }
   outcomeOfInterest <- lapply(unique(tosOfInterest$outcomeId), createOutcomeRow)
   outcomeOfInterest <- dplyr::bind_rows(outcomeOfInterest)
@@ -192,27 +196,28 @@ exportMetadata <- function(outputFolder,
                            databaseId,
                            databaseName,
                            databaseDescription,
-                           minCellCount) {
+                           minCellCount,
+                           exposureOfInterestLabel) {
   ParallelLogger::logInfo("Exporting metadata")
   
   ParallelLogger::logInfo("- database table")
   database <- tibble::tibble(database_id = databaseId,
-                         database_name = databaseName,
-                         description = databaseDescription,
-                         is_meta_analysis = 0)
+                             database_name = databaseName,
+                             description = databaseDescription,
+                             is_meta_analysis = 0)
   fileName <- file.path(exportFolder, "database.csv")
   readr::write_csv(database, fileName)
   
   
   ParallelLogger::logInfo("- sccs_time_dist table")
-  getResult <- function(row) {
+  getResult <- function(row, exposureOfInterestLabel) {
     sccsEraData <- SelfControlledCaseSeries::loadSccsEraData(file.path(outputFolder, "sccsOutput", row$sccsEraDataFolder[1]))
     if (is.null(sccsEraData$outcomes)) {
       return(NULL)
     } else {
       covariateRef <- ff::as.ram(sccsEraData$covariateRef)
       
-      exposureCovariateId <- covariateRef$covariateId[grepl("Exposure of interest", covariateRef$covariateName)]
+      exposureCovariateId <- covariateRef$covariateId[grepl(exposureOfInterestLabel, covariateRef$covariateName)]
       
       idx <- sccsEraData$covariates$covariateId == exposureCovariateId
       if (!any(idx)) {
@@ -240,7 +245,7 @@ exportMetadata <- function(outputFolder,
         exposureDaysDist <- quantile(exposureDaysPerPerson$time, c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
         
         exposedOutcomeCount <- sum(sccsEraData$outcomes$y[ffbase::`%in%`(sccsEraData$outcomes$rowId,
-                                            exposedEras), ])
+                                                                         exposedEras), ])
       }
       
       row <- tibble::tibble(exposureId = row$exposureId[1],
@@ -273,18 +278,20 @@ exportMetadata <- function(outputFolder,
   # Important: can only use data that hasn't been reweighted by adjustment for event-dependent observation
   reference <- reference[reference$analysisId == 1, ]
   
-  results <- plyr::llply(split(reference, reference$sccsEraDataFolder), getResult, .progress = "text")
+  results <- plyr::llply(split(reference, reference$sccsEraDataFolder), getResult, exposureOfInterestLabel = exposureOfInterestLabel, .progress = "text")
   results <- dplyr::bind_rows(results)
   results$database_id <- rep(databaseId, nrow(results))
-  results <- enforceMinCellValue(results, "outcomes", minCellCount)
-  results <- enforceMinCellValue(results, "exposed_outcomes", minCellCount)
+  if (nrow(results) > 0) {
+    results <- enforceMinCellValue(results, "outcomes", minCellCount)
+    results <- enforceMinCellValue(results, "exposed_outcomes", minCellCount)
+  }
   fileName <- file.path(exportFolder, "sccs_time_dist.csv")
   readr::write_csv(results, fileName)
   rm(results)  # Free up memory
 }
 
 enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
-  toCensor <- !is.na(data[, fieldName]) & data[, fieldName] < minValues & data[, fieldName] != 0
+  toCensor <- as.vector(!is.na(data[, fieldName]) & data[, fieldName] < minValues & data[, fieldName] != 0)
   if (!silent) {
     percent <- round(100 * sum(toCensor)/nrow(data), 1)
     ParallelLogger::logInfo("   censoring ",
@@ -296,7 +303,7 @@ enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
                             " because value below minimum")
   }
   if (length(minValues) == 1) {
-    data[toCensor, fieldName] <- -minValues
+    data[toCensor, fieldName] <- rep(-minValues, sum(toCensor))
   } else {
     data[toCensor, fieldName] <- -minValues[toCensor]
   }
@@ -304,10 +311,10 @@ enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
 }
 
 exportCharacterizations <- function(outputFolder,
-                              exportFolder,
-                              databaseId,
-                              minCellCount,
-                              maxCores) {
+                                    exportFolder,
+                                    databaseId,
+                                    minCellCount,
+                                    maxCores) {
   ParallelLogger::logInfo("Exporting characterizations")
   ParallelLogger::logInfo("- covariate_value table")
   fileName <- file.path(exportFolder, "covariate_value.csv")
@@ -350,7 +357,7 @@ exportCharacterizations <- function(outputFolder,
     result$exposureId <- rep(exposureId, nrow(result))
     result$outcomeId <- rep(outcomeId, nrow(result))
     if (nrow(result) > 0) {
-      result <- enforceMinCellValue(result, "mean", minCellCount/covariateData$metaData$populationSize)
+      result <- enforceMinCellValue(result, "mean", minCellCount/covariateData$metaData$populationSize, silent = TRUE)
       result$sd[result$mean < 0] <- NA
       result$mean <- round(result$mean, 3)
       result$sd <- round(result$sd, 3)
@@ -365,8 +372,10 @@ exportCharacterizations <- function(outputFolder,
                 qmethod = "double",
                 append = !first)
     
-    covariate <- dplyr::bind_rows(covariate, 
-                                  ff::as.ram(covariateData$covariateRef)[, c("covariateId", "covariateName")])
+    # Store covariate reference:
+    temp <- ff::as.ram(covariateData$covariateRef)[, c("covariateId", "covariateName")]
+    temp$covariateName <- as.character(temp$covariateName)
+    covariate <- dplyr::bind_rows(covariate, temp)
     covariate <- unique(covariate)
     
     first <- FALSE
@@ -384,48 +393,64 @@ exportMainResults <- function(outputFolder,
                               exportFolder,
                               databaseId,
                               minCellCount,
-                              maxCores) {
+                              maxCores,
+                              exposureOfInterestLabel) {
   ParallelLogger::logInfo("Exporting main results")
   
-  
-  #TODO: fix
   ParallelLogger::logInfo("- sccs_result table")
-  sccsSummary <- read.csv(file.path(outputFolder, "sccsSummary.csv"))
+  sccsSummary <- readr::read_csv(file.path(outputFolder, "sccsSummary.csv"), col_types = readr::cols())
   pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Covid19Il6JakInhibitorsSccs")
-  negativeControls <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+  negativeControls <- readr::read_csv(pathToCsv, col_types = readr::cols())
+  
+  results <- sccsSummary[, c("analysisId", "exposureId", "outcomeId")]
+  results$subjects <- sccsSummary$caseCount
+  results$outcomes <- sccsSummary$eventCount
+  results$rr <- sccsSummary[[sprintf("rr(%s)", exposureOfInterestLabel)]]
+  results$ci95Lb <- sccsSummary[[sprintf("ci95lb(%s)", exposureOfInterestLabel)]]
+  results$ci95Ub <- sccsSummary[[sprintf("ci95ub(%s)", exposureOfInterestLabel)]]
+  results$logRr <- sccsSummary[[sprintf("logRr(%s)", exposureOfInterestLabel)]]
+  results$seLogRr <- sccsSummary[[sprintf("seLogRr(%s)", exposureOfInterestLabel)]]
+  results$p <- EmpiricalCalibration::computeTraditionalP(logRr = results$logRr,
+                                                         seLogRr = results$seLogRr)
   
   calibrate <- function(subset) {
     ncs <- merge(subset, negativeControls)
-    ncs <- ncs[!is.na(ncs$`seLogRr(Exposure of interest)`) & !is.infinite(ncs$`seLogRr(Exposure of interest)`), ]
+    ncs <- ncs[!is.na(ncs$seLogRr) & !is.infinite(ncs$seLogRr), ]
     if (nrow(ncs)  != 0) {
-      null <- EmpiricalCalibration::fitMcmcNull(logRr = ncs$`logRr(Exposure of interest)`,
-                                                seLogRr = ncs$`seLogRr(Exposure of interest)`)
-      calP <- EmpiricalCalibration::calibrateP(null, logRr = subset$`logRr(Exposure of interest)`,
-                                               seLogRr = subset$`seLogRr(Exposure of interest)`)
-      subset$calP <- calP$p
-      subset$calPLb <- calP$lb95ci
-      subset$calPUb <- calP$ub95ci
+      null <- EmpiricalCalibration::fitMcmcNull(logRr = ncs$logRr,
+                                                seLogRr = ncs$seLogRr)
+      calP <- EmpiricalCalibration::calibrateP(null, logRr = subset$logRr,
+                                               seLogRr = subset$seLogRr)
+      subset$calibratedP <- calP$p
       
       model <- EmpiricalCalibration::convertNullToErrorModel(null)
-      calCi <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = subset$`logRr(Exposure of interest)`,
-                                                                 seLogRr = subset$`seLogRr(Exposure of interest)`,
+      calCi <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = subset$logRr,
+                                                                 seLogRr = subset$seLogRr,
                                                                  model = model)
       
-      subset$calRr <- exp(calCi$logRr)
-      subset$calLb95Rr <- exp(calCi$logLb95Rr)
-      subset$calUb95Rr <- exp(calCi$logUb95Rr)
-      subset$calLogRr <- calCi$logRr
-      subset$calSeLogRr <- calCi$seLogRr
-    } 
+      subset$calibratedRr <- exp(calCi$logRr)
+      subset$calibratedCi95Lb <- exp(calCi$logLb95Rr)
+      subset$calibratedCi95Ub <- exp(calCi$logUb95Rr)
+      subset$calibratedLogRr <- calCi$logRr
+      subset$calibratedSeLogRr <- calCi$seLogRr
+    }  else {
+      subset$calibratedP <- NA
+      subset$calibratedRr <- NA
+      subset$calibratedCi95Lb <- NA
+      subset$calibratedCi95Ub <- NA
+      subset$calibratedLogRr <- NA
+      subset$calibratedSeLogRr <- NA
+    }
     return(subset)
   }  
-  results <- lapply(split(sccsSummary, sccsSummary$exposureId), calibrate)
+  results <- lapply(split(results, results$exposureId), calibrate)
   results <- dplyr::bind_rows(results)
-  
-  
-  
-  
-  
-  
+  if (nrow(results) > 0) {
+    results <- enforceMinCellValue(results, "subjects", minCellCount)
+    results <- enforceMinCellValue(results, "outcomes", minCellCount)
+  }
+  colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
+  fileName <- file.path(exportFolder, "sccs_result.csv")
+  readr::write_csv(results, fileName)
 }
 

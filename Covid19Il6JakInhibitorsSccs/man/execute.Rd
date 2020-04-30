@@ -12,10 +12,14 @@ execute(
   oracleTempSchema = cohortDatabaseSchema,
   outputFolder,
   databaseId,
+  databaseName = databaseId,
+  databaseDescription = databaseId,
+  minCellCount = 5,
   createCohorts = TRUE,
   runSccs = TRUE,
+  createCharacterization = TRUE,
   runSccsDiagnostics = TRUE,
-  generateBasicOutputTable = TRUE,
+  exportResults = TRUE,
   maxCores = 4
 )
 }
@@ -46,13 +50,23 @@ performance.}
 \item{databaseId}{A short unique identifier for the database. Will be used to generate
 file names.}
 
+\item{databaseName}{The full name of the database (e.g. 'Medicare Claims
+Synthetic Public Use Files (SynPUFs)').}
+
+\item{databaseDescription}{A short description (several sentences) of the database.}
+
+\item{minCellCount}{The minimum cell count for fields contains person counts
+or fractions when exporting to CSV.}
+
 \item{createCohorts}{Create the cohortTable table with the exposure and outcome cohorts?}
 
 \item{runSccs}{Perform the SCCS analyses? Requires the cohorts have been created.}
 
-\item{runSccsDiagnostics}{Generate SCCSdiagnostics?}
+\item{createCharacterization}{Generate the cohort characterizations?}
 
-\item{generateBasicOutputTable}{Generate a basic table with effect size estimates?}
+\item{runSccsDiagnostics}{Generate local SCCS diagnostics?}
+
+\item{exportResults}{Export the results to CSV?}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}

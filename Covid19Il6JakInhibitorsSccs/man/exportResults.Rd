@@ -10,6 +10,7 @@ exportResults(
   databaseName,
   databaseDescription,
   minCellCount = 5,
+  exposureOfInterestLabel = "Exposure of interest",
   maxCores
 )
 }
@@ -25,6 +26,8 @@ performance.}
 \item{databaseDescription}{A short description (several sentences) of the database.}
 
 \item{minCellCount}{The minimum cell count for fields contains person counts or fractions.}
+
+\item{exposureOfInterestLabel}{The label used for the covariates that identify the exposure of interest, the}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made
 available this can speed up the analyses.}
