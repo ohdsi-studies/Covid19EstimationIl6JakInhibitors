@@ -41,10 +41,16 @@
 #'                             performance.
 #' @param databaseId           A short unique identifier for the database. Will be used to generate
 #'                             file names. 
+#' @param databaseName                         The full name of the database (e.g. 'Medicare Claims
+#'                                             Synthetic Public Use Files (SynPUFs)').
+#' @param databaseDescription                  A short description (several sentences) of the database.
+#' @param minCellCount                         The minimum cell count for fields contains person counts
+#'                                             or fractions when exporting to CSV.
 #' @param createCohorts        Create the cohortTable table with the exposure and outcome cohorts?
 #' @param runSccs              Perform the SCCS analyses? Requires the cohorts have been created.
-#' @param runSccsDiagnostics   Generate SCCSdiagnostics?
-#' @param generateBasicOutputTable Generate a basic table with effect size estimates?
+#' @param runSccsDiagnostics   Generate local SCCS diagnostics?
+#' @param createCharacterization Generate the cohort characterizations?
+#' @param exportResults        Export the results to CSV?
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
 #'
@@ -56,17 +62,21 @@ execute <- function(connectionDetails,
                     oracleTempSchema = cohortDatabaseSchema,
                     outputFolder,
                     databaseId,
+                    databaseName = databaseId,
+                    databaseDescription = databaseId,
+                    minCellCount = 5,
                     createCohorts = TRUE,
                     runSccs = TRUE,
+                    createCharacterization = TRUE,
                     runSccsDiagnostics = TRUE,
-                    generateBasicOutputTable = TRUE,
+                    exportResults = TRUE,
                     maxCores = 4) {
   if (!file.exists(outputFolder)) {
     dir.create(outputFolder, recursive = TRUE)
   }
   
   ParallelLogger::addDefaultFileLogger(file.path(outputFolder, "log.txt"))
-  ParallelLogger::addDefaultErrorReportLogger()
+  ParallelLogger::addDefaultErrorReportLogger(file.path(outputFolder, "errorReportR.txt"))
   
   on.exit(ParallelLogger::unregisterLogger("DEFAULT_FILE_LOGGER", silent = TRUE))
   on.exit(ParallelLogger::unregisterLogger("DEFAULT_ERRORREPORT_LOGGER", silent = TRUE), add = TRUE)
@@ -100,14 +110,30 @@ execute <- function(connectionDetails,
                                 maxCores = maxCores)
   }
   
+  if (createCharacterization) {
+    ParallelLogger::logInfo("Creating characterization")
+    createCharacterization(connectionDetails = connectionDetails,
+                           cdmDatabaseSchema = cdmDatabaseSchema,
+                           cohortDatabaseSchema = cohortDatabaseSchema,
+                           cohortTable = cohortTable,
+                           oracleTempSchema = oracleTempSchema,
+                           outputFolder = outputFolder) 
+  }
+  
   if (runSccsDiagnostics) {
     ParallelLogger::logInfo("Running SCCS diagnostics")
     runSccsDiagnostics(outputFolder = outputFolder, databaseId = databaseId)
   }
   
-  if (generateBasicOutputTable) {
-    generateBasicOutputTable(outputFolder = outputFolder, databaseId = databaseId) 
-    ParallelLogger::logInfo("Results are now available in ", file.path(outputFolder, "sccsDiagnostics"))
+  if (exportResults) {
+    ParallelLogger::logInfo("Running SCCS diagnostics")
+    exportResults(outputFolder = outputFolder,
+                  databaseId = databaseId,
+                  databaseName = databaseName,
+                  databaseDescription = databaseDescription,
+                  minCellCount = minCellCount,
+                  exposureOfInterestLabel = "Exposure of interest",
+                  maxCores = maxCores)
   }
   ParallelLogger::unregisterLogger("DEFAULT_ERRORREPORT_LOGGER")
   ParallelLogger::logFatal("Done")
