@@ -211,9 +211,36 @@ exportMetadata <- function(outputFolder,
   
   ParallelLogger::logInfo("- sccs_time_dist table")
   getResult <- function(row, exposureOfInterestLabel) {
+    subjectCounts <- readRDS(file.path(outputFolder, "characterization", "subjectCounts.rds"))
+    outcomeSubjects <- subjectCounts$subjects[subjectCounts$outcomeId == row$outcomeId & 
+                                                !is.na(subjectCounts$outcomeId) & 
+                                                is.na(subjectCounts$exposureId)]
+    exposureSubjects <- subjectCounts$subjects[subjectCounts$exposureId == row$exposureId & 
+                                                 !is.na(subjectCounts$exposureId) & 
+                                                 is.na(subjectCounts$outcomeId)]
+    exposureOutcomeSubjects <- subjectCounts$subjects[subjectCounts$exposureId == row$exposureId &
+                                                        !is.na(subjectCounts$exposureId) &
+                                                        subjectCounts$outcomeId == row$outcomeId &
+                                                        !is.na(subjectCounts$outcomeId)]
+    if (length(outcomeSubjects) == 0) {
+      outcomeSubjects <- 0
+    }
+    if (length(exposureSubjects) == 0) {
+      exposureSubjects <- 0
+    }
+    if (length(exposureOutcomeSubjects) == 0) {
+      exposureOutcomeSubjects <- 0
+    }
+    outRow <- tibble::tibble(exposure_id = row$exposureId[1],
+                             outcome_id = row$outcomeId[1],
+                             analysis_id = row$analysisId[1],
+                             outcome_subjects = outcomeSubjects,
+                             exposure_subjects = exposureSubjects,
+                             exposure_outcome_subjects = exposureOutcomeSubjects)
+    
     sccsEraData <- SelfControlledCaseSeries::loadSccsEraData(file.path(outputFolder, "sccsOutput", row$sccsEraDataFolder[1]))
     if (is.null(sccsEraData$outcomes)) {
-      return(NULL)
+      return(outRow)
     } else {
       covariateRef <- ff::as.ram(sccsEraData$covariateRef)
       
@@ -247,27 +274,29 @@ exportMetadata <- function(outputFolder,
         exposedOutcomeCount <- sum(sccsEraData$outcomes$y[ffbase::`%in%`(sccsEraData$outcomes$rowId,
                                                                          exposedEras), ])
       }
-      
-      row <- tibble::tibble(exposureId = row$exposureId[1],
-                            outcome_id = row$outcomeId[1],
-                            analysis_id = row$analysisId[1],
-                            outcomes = outcomeCount,
-                            exposed_outcomes = exposedOutcomeCount,
-                            min_observation_days = observationDaysDist[1],
-                            p10_observation_days = observationDaysDist[2],
-                            p25_observation_days = observationDaysDist[3],
-                            median_observation_days = observationDaysDist[4],
-                            p75_observation_days = observationDaysDist[5],
-                            p90_observation_days = observationDaysDist[6],
-                            max_observation_days = observationDaysDist[7],
-                            min_exposure_days = exposureDaysDist[1],
-                            p10_exposure_days = exposureDaysDist[2],
-                            p25_exposure_days = exposureDaysDist[3],
-                            median_exposure_days = exposureDaysDist[4],
-                            p75_exposure_days = exposureDaysDist[5],
-                            p90_exposure_days = exposureDaysDist[6],
-                            max_exposure_days = exposureDaysDist[7])
-      return(row)
+      # Hack: should be able to compute MDRR based on other numbers:
+      mdrr <- SelfControlledCaseSeries::computeMdrr(sccsEraData = sccsEraData,
+                                                    exposureCovariateId = exposureCovariateId)
+                                                    
+      outRow <- dplyr::bind_cols(outRow,
+                                 tibble::tibble(outcomes = outcomeCount,
+                                                exposed_outcomes = exposedOutcomeCount,
+                                                min_observation_days = observationDaysDist[1],
+                                                p10_observation_days = observationDaysDist[2],
+                                                p25_observation_days = observationDaysDist[3],
+                                                median_observation_days = observationDaysDist[4],
+                                                p75_observation_days = observationDaysDist[5],
+                                                p90_observation_days = observationDaysDist[6],
+                                                max_observation_days = observationDaysDist[7],
+                                                min_exposure_days = exposureDaysDist[1],
+                                                p10_exposure_days = exposureDaysDist[2],
+                                                p25_exposure_days = exposureDaysDist[3],
+                                                median_exposure_days = exposureDaysDist[4],
+                                                p75_exposure_days = exposureDaysDist[5],
+                                                p90_exposure_days = exposureDaysDist[6],
+                                                max_exposure_days = exposureDaysDist[7],
+                                                mdrr = mdrr$mdrr))
+      return(outRow)
     }
   }
   pathToCsv <- system.file("settings", "TosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
@@ -284,10 +313,12 @@ exportMetadata <- function(outputFolder,
   if (nrow(results) > 0) {
     results <- enforceMinCellValue(results, "outcomes", minCellCount)
     results <- enforceMinCellValue(results, "exposed_outcomes", minCellCount)
+    results <- enforceMinCellValue(results, "outcome_subjects", minCellCount)
+    results <- enforceMinCellValue(results, "exposure_subjects", minCellCount)
+    results <- enforceMinCellValue(results, "exposure_outcome_subjects", minCellCount)
   }
   fileName <- file.path(exportFolder, "sccs_time_dist.csv")
   readr::write_csv(results, fileName)
-  rm(results)  # Free up memory
 }
 
 enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
@@ -445,6 +476,7 @@ exportMainResults <- function(outputFolder,
   }  
   results <- lapply(split(results, results$exposureId), calibrate)
   results <- dplyr::bind_rows(results)
+  results$database_id <- rep(databaseId, nrow(results))
   if (nrow(results) > 0) {
     results <- enforceMinCellValue(results, "subjects", minCellCount)
     results <- enforceMinCellValue(results, "outcomes", minCellCount)

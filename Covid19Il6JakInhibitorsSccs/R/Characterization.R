@@ -36,7 +36,6 @@ createCharacterization <- function(connectionDetails,
   
   covariateSettings <- FeatureExtraction::createDefaultCovariateSettings()
   
-  
   pathToCsv <- system.file("settings", "TosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
   tosOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)  
   exposureOutcome <- tosOfInterest[, c("exposureId", "outcomeId")]
@@ -65,8 +64,29 @@ createCharacterization <- function(connectionDetails,
                                            exposure_table = cohortTable,
                                            outcome_database_schema = cohortDatabaseSchema,
                                            outcome_table = cohortTable,
-                                           washout_days = washoutDays)
+                                           washout_days = washoutDays,
+                                           first_outcome_only = FALSE)
   DatabaseConnector::executeSql(connection, sql)
+  
+  sql <- "SELECT cohort_definition_id AS exposure_id, COUNT(DISTINCT subject_id) AS subjects FROM #exposure_cohort GROUP BY cohort_definition_id;"
+  exposureCounts <- DatabaseConnector::renderTranslateQuerySql(connection = connection, 
+                                                               sql = sql, 
+                                                               oracleTempSchema = oracleTempSchema, 
+                                                               snakeCaseToCamelCase = TRUE)
+  sql <- "SELECT cohort_definition_id AS outcome_id, COUNT(DISTINCT subject_id) AS subjects FROM #outcome_cohort GROUP BY cohort_definition_id;"
+  outcomeCounts <- DatabaseConnector::renderTranslateQuerySql(connection = connection, 
+                                                              sql = sql, 
+                                                              oracleTempSchema = oracleTempSchema, 
+                                                              snakeCaseToCamelCase = TRUE)
+  sql <- "SELECT cohort_definition_id, COUNT(DISTINCT subject_id) AS subjects FROM #eo_cohort GROUP BY cohort_definition_id;"
+  eoCounts <- DatabaseConnector::renderTranslateQuerySql(connection = connection, 
+                                                         sql = sql, 
+                                                         oracleTempSchema = oracleTempSchema, 
+                                                         snakeCaseToCamelCase = TRUE)
+  eoCounts <- merge(eoCounts, exposureOutcome)
+  eoCounts$cohortDefinitionId <- NULL
+  subjectCounts <- dplyr::bind_rows(exposureCounts, outcomeCounts, eoCounts)
+  saveRDS(subjectCounts, file.path(characterizationFolder, "subjectCounts.rds"))
   
   for (exposureId in exposureIds) {
     echaracterizationFolder <- file.path(characterizationFolder, sprintf("covariateData_e%s", exposureId))
@@ -97,8 +117,11 @@ createCharacterization <- function(connectionDetails,
       FeatureExtraction::saveCovariateData(covariateData, eocharacterizationFolder)
     }
   }
+  
   sql <- "TRUNCATE TABLE #exposure_cohort; 
     DROP TABLE #exposure_cohort;
+    TRUNCATE TABLE #outcome_cohort; 
+    DROP TABLE #outcome_cohort;
     TRUNCATE TABLE #eo_cohort;
     DROP TABLE #eo_cohort;
     TRUNCATE TABLE #exposure_outcome;
