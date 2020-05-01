@@ -25,9 +25,9 @@ cdmDatabaseSchema <- "CDM_IBM_CCAE_V1103.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 cohortTable <- "mschuemi_covid19sccs_ccae"
 oracleTempSchema <- NULL
+outputFolder <- file.path(studyFolder, databaseId)
 databaseName <- "IBM MarketScan Commercial Claims and Encounters Database"
 databaseDescription <- "IBM MarketScan® Commercial Claims and Encounters Database (CCAE) represent data from individuals enrolled in United States employer-sponsored insurance health plans. The data includes adjudicated health insurance claims (e.g. inpatient, outpatient, and outpatient pharmacy) as well as enrollment data from large employers and health plans who provide private healthcare coverage to employees, their spouses, and dependents. Additionally, it captures laboratory tests for a subset of the covered lives. This administrative claims database includes a variety of fee-for-service, preferred provider organizations, and capitated health plans."
-outputFolder <- file.path(studyFolder, databaseId)
 
 # MDCR settings
 databaseId <- "MDCR"
@@ -36,6 +36,8 @@ cohortDatabaseSchema <- "scratch.dbo"
 cohortTable <- "mschuemi_covid19sccs_mdcr"
 oracleTempSchema <- NULL
 outputFolder <- file.path(studyFolder, databaseId)
+databaseName <- "IBM MarketScan Medicare Supplemental and Coordination of Benefits Database"
+databaseDescription <- "IBM MarketScan® Medicare Supplemental and Coordination of Benefits Database (MDCR) represents health services of retirees in the United States with primary or Medicare supplemental coverage through privately insured fee-for-service, point-of-service, or capitated health plans. These data include adjudicated health insurance claims (e.g. inpatient, outpatient, and outpatient pharmacy). Additionally, it captures laboratory tests for a subset of the covered lives."
 
 # MDCD settings
 databaseId <- "MDCD"
@@ -65,6 +67,8 @@ cohortDatabaseSchema <- "scratch.dbo"
 cohortTable <- "mschuemi_covid19sccs_optum"
 oracleTempSchema <- NULL
 outputFolder <- file.path(studyFolder, databaseId)
+databaseName <- "Optum’s Clinformatics® Extended Data Mart"
+databaseDescription <- "Optum Clinformatics Extended DataMart is an adjudicated US administrative health claims database for members of private health insurance, who are fully insured in commercial plans or in administrative services only (ASOs), Legacy Medicare Choice Lives (prior to January 2006), and Medicare Advantage (Medicare Advantage Prescription Drug coverage starting January 2006). The population is primarily representative of commercial claims patients (0-65 years old) with some Medicare (65+ years old) however ages are capped at 90 years. It includes data captured from administrative claims processed from inpatient and outpatient medical services and prescriptions as dispensed, as well as results for outpatient lab tests processed by large national lab vendors who participate in data exchange with Optum. This dataset also provides date of death (month and year only) for members with both medical and pharmacy coverage from the Social Security Death Master File (however after 2011 reporting frequency changed due to changes in reporting requirements) and location information for patients is at the US state level."
 
 # CPRD settings
 databaseId <- "CPRD"
@@ -73,6 +77,11 @@ cohortDatabaseSchema <- "scratch.dbo"
 cohortTable <- "mschuemi_covid19sccs_cprd"
 oracleTempSchema <- NULL
 outputFolder <- file.path(studyFolder, databaseId)
+databaseName <- "Clinical Practice Research Datalink"
+databaseDescription <- "The Clinical Practice Research Datalink (CPRD) is a governmental, not-for-profit research service, jointly funded by the NHS National Institute for Health Research (NIHR) and the Medicines and Healthcare products Regulatory Agency (MHRA), a part of the Department of Health, United Kingdom (UK). CPRD consists of data collected from UK primary care for all ages. This includes conditions, observations, measurements, and procedures that the general practitioner is made aware of in additional to any prescriptions as prescribed by the general practitioner. In addition to primary care, there are also linked secondary care records for a small number of people.\nThe major data elements contained within this database are outpatient prescriptions given by the general practitioner (coded with Multilex codes) and outpatient clinical, referral, immunization or test events that the general practitioner knows about (coded in Read or ICD10 or LOINC codes). The database also contains the patients’ year of births and any date of deaths."
+
+# This function will ask you if you're sure:
+deleteHoiFiles(outputFolder)
 
 execute(connectionDetails = connectionDetails,
         cdmDatabaseSchema = cdmDatabaseSchema,
@@ -83,22 +92,9 @@ execute(connectionDetails = connectionDetails,
         databaseId = databaseId,
         databaseName = databaseName,
         databaseDescription = databaseDescription,
-        createCohorts = FALSE,
-        runSccs = FALSE,
-        createCharacterization = FALSE,
-        runSccsDiagnostics = FALSE,
+        createCohorts = TRUE,
+        runSccs = TRUE,
+        createCharacterization = TRUE,
+        runSccsDiagnostics = TRUE,
         exportResults = TRUE,
         maxCores = maxCores) 
-
-
-
-# Delete erroneous analyses
-pathToCsv <- system.file("settings", "tosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
-tosOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
-outcomeIds <- unique(tosOfInterest$outcomeId)
-for (outcomeId in outcomeIds) {
-        filesToDelete <- list.files(outputFolder, sprintf("_o%s", outcomeId), recursive = TRUE, include.dirs = TRUE, full.names = TRUE)
-        unlink(filesToDelete, recursive = TRUE)
-}
-unlink(file.path(outputFolder, "sccsOutput", "SccsData_l1"), recursive = TRUE)
-unlink(file.path(outputFolder, "sccsSummary.csv"))
