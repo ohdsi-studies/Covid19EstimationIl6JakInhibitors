@@ -538,7 +538,14 @@ calibrate <- function(subset, allControls) {
     subset$calibratedCi95Ub <- exp(calibratedCi$logUb95Rr)
     subset$calibratedLogRr <- calibratedCi$logRr
     subset$calibratedSeLogRr <- calibratedCi$seLogRr
-  } 
+  } else {
+    subset$calibratedP <- rep(NA, nrow(subset))
+    subset$calibratedRr <- rep(NA, nrow(subset))
+    subset$calibratedCi95Lb <- rep(NA, nrow(subset))
+    subset$calibratedCi95Ub <- rep(NA, nrow(subset))
+    subset$calibratedLogRr <- rep(NA, nrow(subset))
+    subset$calibratedSeLogRr <- rep(NA, nrow(subset))
+  }
   pcs <- subset[subset$outcomeId %in% allControls$outcomeId[allControls$targetEffectSize != 1], ]
   pcs <- pcs[!is.na(pcs$seLogRr), ]
   if (nrow(pcs) > 5) {
@@ -555,13 +562,7 @@ calibrate <- function(subset, allControls) {
     subset$calibratedCi95Ub <- exp(calibratedCi$logUb95Rr)
     subset$calibratedLogRr <- calibratedCi$logRr
     subset$calibratedSeLogRr <- calibratedCi$seLogRr
-  } else {
-    subset$calibratedRr <- rep(NA, nrow(subset))
-    subset$calibratedCi95Lb <- rep(NA, nrow(subset))
-    subset$calibratedCi95Ub <- rep(NA, nrow(subset))
-    subset$calibratedLogRr <- rep(NA, nrow(subset))
-    subset$calibratedSeLogRr <- rep(NA, nrow(subset))
-  }
+  } 
   subset$i2 <- rep(NA, nrow(subset))
   subset <- subset[, c("targetId",
                        "comparatorId",
