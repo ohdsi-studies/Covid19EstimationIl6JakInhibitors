@@ -94,7 +94,12 @@ execute(connectionDetails = connectionDetails,
         databaseDescription = databaseDescription,
         createCohorts = FALSE,
         runSccs = FALSE,
-        createCharacterization = FALSE,
-        runSccsDiagnostics = FALSE,
+        createCharacterization = TRUE,
+        runSccsDiagnostics = TRUE,
         exportResults = TRUE,
         maxCores = maxCores) 
+
+resultsFolder <- "S:/Covid19Il6JakInhibitorsSccs/exportedResults"
+file.copy(file.path(outputFolder, "export", sprintf("Results%s.zip", databaseId)),
+          file.path(resultsFolder, sprintf("Results%s.zip", databaseId)),
+          overwrite = TRUE)

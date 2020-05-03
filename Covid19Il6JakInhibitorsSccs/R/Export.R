@@ -1,4 +1,3 @@
-# Copyright 2019 Observational Health Data Sciences and Informatics
 #
 # This file is part of Covid19Il6JakInhibitorsSccs
 #
@@ -265,6 +264,7 @@ exportMetadata <- function(outputFolder,
       if (!any(idx)) {
         exposureDaysDist <- rep(0, 7)
         exposedOutcomeCount <- 0
+        mdrr <- NA
       } else {
         exposedEras <- sccsEraData$covariates$rowId[idx, ]
         exposureDaysPerPerson <- aggregate(time ~ stratumId, sccsEraData$outcomes[ffbase::`%in%`(sccsEraData$outcomes$rowId,
@@ -273,10 +273,11 @@ exportMetadata <- function(outputFolder,
         
         exposedOutcomeCount <- sum(sccsEraData$outcomes$y[ffbase::`%in%`(sccsEraData$outcomes$rowId,
                                                                          exposedEras), ])
+        # Hack: should be able to compute MDRR based on other numbers:
+        mdrr <- SelfControlledCaseSeries::computeMdrr(sccsEraData = sccsEraData,
+                                                      exposureCovariateId = exposureCovariateId)
+        
       }
-      # Hack: should be able to compute MDRR based on other numbers:
-      mdrr <- SelfControlledCaseSeries::computeMdrr(sccsEraData = sccsEraData,
-                                                    exposureCovariateId = exposureCovariateId)
                                                     
       outRow <- dplyr::bind_cols(outRow,
                                  tibble::tibble(outcomes = outcomeCount,
@@ -404,7 +405,8 @@ exportCharacterizations <- function(outputFolder,
                 append = !first)
     
     # Store covariate reference:
-    temp <- ff::as.ram(covariateData$covariateRef)[, c("covariateId", "covariateName")]
+    temp <- ff::as.ram(covariateData$covariateRef)[, c("covariateId", "covariateName", "analysisId")]
+    colnames(temp)[3] <- "covariateAnalysisId"
     temp$covariateName <- as.character(temp$covariateName)
     covariate <- dplyr::bind_rows(covariate, temp)
     covariate <- unique(covariate)

@@ -234,15 +234,14 @@ getSubgroupResults <- function(connection,
   return(result)
 }
 
-getControlResults <- function(connection, targetId, comparatorId, analysisId, databaseId) {
-  results <- cohortMethodResult[cohortMethodResult$targetId == targetId &
-                                  cohortMethodResult$comparatorId == comparatorId &
-                                  cohortMethodResult$analysisId == analysisId &
-                                  cohortMethodResult$databaseId == databaseId, ]
+getControlResults <- function(exposureId, analysisId, databaseId) {
+  results <- sccsResult[sccsResult$exposureId == exposureId &
+                          sccsResult$analysisId == analysisId &
+                          sccsResult$databaseId == databaseId, ]
   results$effectSize <- NA
   idx <- results$outcomeId %in% negativeControlOutcome$outcomeId
   results$effectSize[idx] <- 1
-  if (!is.null(positiveControlOutcome)) {
+  if (exists("positiveControlOutcome") && !is.null(positiveControlOutcome)) {
     idx <- results$outcomeId %in% positiveControlOutcome$outcomeId
     results$effectSize[idx] <- positiveControlOutcome$effectSize[match(results$outcomeId[idx],
                                                                        positiveControlOutcome$outcomeId)]

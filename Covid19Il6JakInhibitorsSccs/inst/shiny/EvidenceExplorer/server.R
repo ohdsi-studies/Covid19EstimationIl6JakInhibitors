@@ -3,6 +3,54 @@ library(DT)
 source("DataPulls.R")
 source("PlotsAndTables.R")
 
+truncateStringDef <- function(columns, maxChars) {
+  list(
+    targets = columns,
+    render = JS(sprintf("function(data, type, row, meta) {\n
+      return type === 'display' && data != null && data.length > %s ?\n
+        '<span title=\"' + data + '\">' + data.substr(0, %s) + '...</span>' : data;\n
+     }", maxChars, maxChars))
+  )
+}
+
+minCellCountDef <- function(columns) {
+  list(
+    targets = columns,
+    render = JS("function(data, type) {
+    if (type !== 'display' || isNaN(parseFloat(data))) return data;
+    if (data >= 0) return data.toString().replace(/(\\d)(?=(\\d{3})+(?!\\d))/g, '$1,');
+    return '<' + Math.abs(data).toString().replace(/(\\d)(?=(\\d{3})+(?!\\d))/g, '$1,');
+  }")
+  )
+}
+
+minCellPercentDef <- function(columns) {
+  list(
+    targets = columns,
+    render = JS("function(data, type) {
+    if (type !== 'display' || isNaN(parseFloat(data))) return data;
+    if (data >= 0) return (100 * data).toFixed(1).replace(/(\\d)(?=(\\d{3})+(?!\\d))/g, '$1,') + '%';
+    return '<' + Math.abs(100 * data).toFixed(1).replace(/(\\d)(?=(\\d{3})+(?!\\d))/g, '$1,') + '%';
+  }")
+  )
+}
+
+minCellRealDef <- function(columns, digits = 1) {
+  list(
+    targets = columns,
+    render = JS(sprintf("function(data, type) {
+    if (type !== 'display' || isNaN(parseFloat(data))) return data;
+    if (data >= 0) return data.toFixed(%s).replace(/(\\d)(?=(\\d{3})+(?!\\d))/g, '$1,');
+    return '<' + Math.abs(data).toFixed(%s).replace(/(\\d)(?=(\\d{3})+(?!\\d))/g, '$1,');
+  }", digits, digits))
+  )
+}
+
+styleAbsColorBar <- function(maxValue, colorPositive, colorNegative, angle = 90) {
+  JS(sprintf("isNaN(parseFloat(value))? '' : 'linear-gradient(%fdeg, transparent ' + (%f - Math.abs(value))/%f * 100 + '%%, ' + (value > 0 ? '%s ' : '%s ') + (%f - Math.abs(value))/%f * 100 + '%%)'", 
+             angle, maxValue, maxValue, colorPositive, colorNegative, maxValue, maxValue))
+}
+
 mainColumns <- c("description", 
                  "databaseId", 
                  "rr", 
@@ -26,7 +74,7 @@ mainColumnNames <- c("<span title=\"Analysis\">Analysis</span>",
                      "<span title=\"Two-sided p-value (calibrated)\">Cal.P</span>")
 
 shinyServer(function(input, output, session) {
-
+  
   observe({
     exposureId <- exposureOfInterest$exposureId[exposureOfInterest$exposureName == input$exposure]
     toSubset <- tos[tos$exposureId == exposureId, ]
@@ -66,9 +114,9 @@ shinyServer(function(input, output, session) {
       results$calibratedSeLogRr <- rep(NA, nrow(results))
       results$calibratedP <- rep(NA, nrow(results))
     }
-   return(results)
+    return(results)
   })
-
+  
   selectedRow <- reactive({
     idx <- input$mainTable_rows_selected
     if (is.null(idx)) {
@@ -82,7 +130,7 @@ shinyServer(function(input, output, session) {
       return(row)
     }
   })
-
+  
   output$rowIsSelected <- reactive({
     return(!is.null(selectedRow()))
   })
@@ -122,16 +170,14 @@ shinyServer(function(input, output, session) {
   output$powerTableCaption <- renderUI({
     row <- selectedRow()
     if (!is.null(row)) {
-      text <- "<strong>Table 1a.</strong> Number of subjects, follow-up time (in years), number of outcome
-      events, and event incidence rate (IR) per 1,000 patient years (PY) in the target (<em>%s</em>) and
-      comparator (<em>%s</em>) group after propensity score adjustment, as  well as the minimum detectable  relative risk (MDRR).
-      Note that the IR does not account for any stratification."
+      text <- "<strong>Table 1a.</strong> The number of outcomes and the number of outcomes while exposed that
+      entered the Poisson regression, as well as the minimum detectable relative risk (MDRR)."
       return(HTML(sprintf(text, input$exposure, input$outcome)))
     } else {
       return(NULL)
     }
   })
-
+  
   output$powerTable <- renderTable({
     row <- selectedRow()
     if (is.null(row)) {
@@ -141,8 +187,8 @@ shinyServer(function(input, output, session) {
       outcomeId <- outcomeOfInterest$outcomeId[outcomeOfInterest$outcomeName == input$outcome]
       # Note: here not filtering by analysis ID, because in this study they'll be the same:
       table <- sccsTimeDist[sccsTimeDist$exposureId == exposureId &
-                            sccsTimeDist$outcomeId == outcomeId &
-                            sccsTimeDist$databaseId == row$databaseId, ]
+                              sccsTimeDist$outcomeId == outcomeId &
+                              sccsTimeDist$databaseId == row$databaseId, ]
       table <- table[, c("outcomes", "exposedOutcomes", "mdrr")]
       colnames(table) <- c("Outcomes",
                            "Exposed outcomes",
@@ -150,7 +196,7 @@ shinyServer(function(input, output, session) {
       return(table)
     }
   })
-
+  
   output$observationTimeTableCaption <- renderUI({
     row <- selectedRow()
     if (!is.null(row)) {
@@ -162,7 +208,7 @@ shinyServer(function(input, output, session) {
       return(NULL)
     }
   })
-
+  
   output$observationTimeTable <- renderTable({
     row <- selectedRow()
     if (is.null(row)) {
@@ -172,8 +218,8 @@ shinyServer(function(input, output, session) {
       outcomeId <- outcomeOfInterest$outcomeId[outcomeOfInterest$outcomeName == input$outcome]
       # Note: here not filtering by analysis ID, because in this study they'll be the same:
       table <- sccsTimeDist[sccsTimeDist$exposureId == exposureId &
-                            sccsTimeDist$outcomeId == outcomeId &
-                            sccsTimeDist$databaseId == row$databaseId, ]
+                              sccsTimeDist$outcomeId == outcomeId &
+                              sccsTimeDist$databaseId == row$databaseId, ]
       table <- table[, c("minObservationDays", "p10ObservationDays", "p25ObservationDays", "medianObservationDays", "p75ObservationDays", "p90ObservationDays", "maxObservationDays")]
       colnames(table) <- c("Min", "P10", "P25", "Median", "P75", "P90", "Max")
       return(table)
@@ -208,21 +254,146 @@ shinyServer(function(input, output, session) {
       return(table)
     }
   })
-
-
+  
+  
+  output$overlapPlot <- renderPlot({
+    row <- selectedRow()
+    if (is.null(row)) {
+      return(NULL)
+    } else {
+      exposureId <- exposureOfInterest$exposureId[exposureOfInterest$exposureName == input$exposure]
+      outcomeId <- outcomeOfInterest$outcomeId[outcomeOfInterest$outcomeName == input$outcome]
+      
+      # Note, not filtering by analysis id;
+      data <- sccsTimeDist[sccsTimeDist$exposureId == exposureId & sccsTimeDist$outcomeId == outcomeId, ]
+      plot <- VennDiagram::draw.pairwise.venn(area1 = abs(data$exposureSubjects),
+                                              area2 = abs(data$outcomeSubjects),
+                                              cross.area = abs(data$exposureOutcomeSubjects),
+                                              category = c("Exposed", "Outcome"), 
+                                              col = c(rgb(0.8, 0, 0), rgb(0, 0, 0.8)),
+                                              fill = c(rgb(0.8, 0, 0), rgb(0, 0, 0.8)),
+                                              alpha = 0.2,
+                                              fontfamily = rep("sans", 3),
+                                              cat.fontfamily = rep("sans", 2),
+                                              margin = 0.01,
+                                              ind = FALSE)
+      # Borrowed from https://stackoverflow.com/questions/37239128/how-to-put-comma-in-large-number-of-venndiagram
+      idx <- sapply(plot, function(i) grepl("text", i$name))
+      for (i in 1:3) {
+        plot[idx][[i]]$label <- format(as.numeric(plot[idx][[i]]$label), big.mark = ",", scientific = FALSE)
+      }
+      grid::grid.draw(plot)
+      
+      return(plot)
+    }
+  }, res = 100)
+  
+  
+  computeBalance <- reactive({
+    row <- selectedRow()
+    if (is.null(row)) {
+      return(NULL)
+    } else {
+      exposureId <- exposureOfInterest$exposureId[exposureOfInterest$exposureName == input$exposure]
+      outcomeId <- outcomeOfInterest$outcomeId[outcomeOfInterest$outcomeName == input$outcome]
+      
+      fileName <- sprintf("covariate_value_e%s_%s.rds", exposureId, row$databaseId)
+      covsExposed <- readRDS(file.path(dataFolder, fileName))
+      
+      fileName <- sprintf("covariate_value_e%s_o%s_%s.rds", exposureId, outcomeId, row$databaseId)
+      covsExposedWithOutcome <- readRDS(file.path(dataFolder, fileName))
+      
+      covsExposed <- merge(covsExposed, covariate)
+      covsExposedWithOutcome <- merge(covsExposedWithOutcome, covariate)
+      balance <- compareCohortCharacteristics(covsExposed, covsExposedWithOutcome)
+      balance$absStdDiff <- abs(balance$stdDiff)
+      return(balance)
+    }
+  })
+  
+  output$charCompareTable <- renderDataTable({
+    balance <- computeBalance()
+    if (nrow(balance) == 0) {
+      return(NULL)
+    }
+    
+    if (input$charCompareType == "Pretty table") {
+      balance <- merge(balance, covariate[, c("covariateId", "covariateAnalysisId")])
+      table <- prepareTable1Comp(balance)
+      options = list(pageLength = 999,
+                     searching = FALSE,
+                     lengthChange = FALSE,
+                     ordering = FALSE,
+                     paging = FALSE,
+                     columnDefs = list(minCellPercentDef(1:2))
+      )
+      table <- datatable(table,
+                         options = options,
+                         rownames = FALSE,
+                         escape = FALSE,
+                         class = "stripe nowrap compact")
+      table <- formatStyle(table = table,
+                           columns = 2:3,
+                           background = styleColorBar(c(0,1), "lightblue"),
+                           backgroundSize = "98% 88%",
+                           backgroundRepeat = "no-repeat",
+                           backgroundPosition = "center")
+      table <- formatStyle(table = table,
+                           columns = 4,
+                           background = styleAbsColorBar(1, "lightblue", "pink"),
+                           backgroundSize = "98% 88%",
+                           backgroundRepeat = "no-repeat",
+                           backgroundPosition = "center")
+      table <- formatRound(table, 4, digits = 2)
+    } else {
+      table <- balance
+      table <- table[order(table$covariateName), ]
+      table <- table[, c("covariateName", "mean1", "sd1", "mean2", "sd2", "stdDiff")]
+      colnames(table) <- c("Covariate name", "Mean Target", "SD Target", "Mean Comparator", "SD Comparator", "StdDiff")
+      
+      options = list(pageLength = 25,
+                     searching = TRUE,
+                     lengthChange = TRUE,
+                     ordering = TRUE,
+                     paging = TRUE,
+                     columnDefs = list(
+                       truncateStringDef(0, 150),
+                       minCellRealDef(c(1,3), 2)
+                     )
+      )
+      table <- datatable(table,
+                         options = options,
+                         rownames = FALSE,
+                         escape = FALSE,
+                         class = "stripe nowrap compact")
+      table <- formatStyle(table = table,
+                           columns = c(2,4),
+                           background = styleColorBar(c(0,1), "lightblue"),
+                           backgroundSize = "98% 88%",
+                           backgroundRepeat = "no-repeat",
+                           backgroundPosition = "center")
+      table <- formatStyle(table = table,
+                           columns = 6,
+                           background = styleAbsColorBar(1, "lightblue", "pink"),
+                           backgroundSize = "98% 88%",
+                           backgroundRepeat = "no-repeat",
+                           backgroundPosition = "center")
+      table <- formatRound(table, c(3, 5, 6), digits = 2)
+    }
+    return(table)
+  })
+  
+  
   systematicErrorPlot <- reactive({
     row <- selectedRow()
     if (is.null(row)) {
       return(NULL)
     } else {
-      targetId <- exposureOfInterest$exposureId[exposureOfInterest$exposureName == input$target]
-      comparatorId <- exposureOfInterest$exposureId[exposureOfInterest$exposureName == input$comparator]
-      controlResults <- getControlResults(connection = connection,
-                                          targetId = targetId,
-                                          comparatorId = comparatorId,
+      exposureId <- exposureOfInterest$exposureId[exposureOfInterest$exposureName == input$exposure]
+      controlResults <- getControlResults(exposureId = exposureId,
                                           analysisId = row$analysisId,
                                           databaseId = row$databaseId)
-
+      
       plot <- plotScatter(controlResults)
       return(plot)
     }
@@ -233,15 +404,15 @@ shinyServer(function(input, output, session) {
   })
   
   output$downloadSystematicErrorPlotPng <- downloadHandler(filename = "SystematicError.png", 
-                                                   contentType = "image/png", 
-                                                   content = function(file) {
-                                                     ggplot2::ggsave(file, plot = systematicErrorPlot(), width = 12, height = 5.5, dpi = 400)
-                                                   })
+                                                           contentType = "image/png", 
+                                                           content = function(file) {
+                                                             ggplot2::ggsave(file, plot = systematicErrorPlot(), width = 12, height = 5.5, dpi = 400)
+                                                           })
   
   output$downloadSystematicErrorPlotPdf <- downloadHandler(filename = "SystematicError.pdf", 
-                                                   contentType = "application/pdf", 
-                                                   content = function(file) {
-                                                     ggplot2::ggsave(file = file, plot = systematicErrorPlot(), width = 12, height = 5.5)
-                                                   })
-
+                                                           contentType = "application/pdf", 
+                                                           content = function(file) {
+                                                             ggplot2::ggsave(file = file, plot = systematicErrorPlot(), width = 12, height = 5.5)
+                                                           })
+  
 })

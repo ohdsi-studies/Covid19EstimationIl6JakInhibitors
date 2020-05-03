@@ -40,9 +40,13 @@ shinyUI(
                                                            uiOutput("exposureTimeTableCaption"),
                                                            tableOutput("exposureTimeTable")
                                                   ),
+                                                  tabPanel("Overlap",
+                                                    plotOutput("overlapPlot")       
+                                                  ),
                                                   tabPanel("Population characteristics",
+                                                           radioButtons("charCompareType", "", c("Pretty table", "Raw table"), selected = "Pretty table", inline = TRUE),
                                                            uiOutput("table1Caption"),
-                                                           dataTableOutput("table1Table")),
+                                                           dataTableOutput("charCompareTable")),
                                                   tabPanel("Systematic error",
                                                            plotOutput("systematicErrorPlot"),
                                                            div(strong("Figure 4."),"Systematic error. Effect size estimates for the negative controls (true hazard ratio = 1)

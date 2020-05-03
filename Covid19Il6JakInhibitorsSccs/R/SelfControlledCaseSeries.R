@@ -129,6 +129,25 @@ runSccsDiagnostics <- function(outputFolder, databaseId) {
     }
   }  
   lapply(split(ncs, paste(ncs$exposureId, ncs$analysisId)), evaluateSystematicError)
+  
+  
+  omr <- readRDS(file.path(outputFolder, "sccsOutput", "outcomeModelReference.rds"))
+  sccsData <- SelfControlledCaseSeries::loadSccsData(file.path(outputFolder, "sccsOutput", omr$sccsDataFolder[1]))
+  
+  pathToCsv <- system.file("settings", "TosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
+  tosOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)  
+  outcomeIds <- unique(tosOfInterest$outcomeId)
+  for (outcomeId in outcomeIds) {
+    SelfControlledCaseSeries::plotAgeSpans(sccsData = sccsData,
+                                           outcomeId = outcomeId,
+                                           firstOutcomeOnly = FALSE,
+                                           naivePeriod = 365,
+                                           fileName = file.path(diagnosticsFolder, sprintf("AgeSpans_o%s.png", outcomeId)))
+    SelfControlledCaseSeries::plotEventObservationDependence(sccsData = sccsData,
+                                                             outcomeId = outcomeId,
+                                                             naivePeriod = 365,
+                                                             fileName = file.path(diagnosticsFolder, sprintf("EventObsDep_o%s.png", outcomeId)))
+  }
 }
 
 generateBasicOutputTable <- function(outputFolder, databaseId) {

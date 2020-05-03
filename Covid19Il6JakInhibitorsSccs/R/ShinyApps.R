@@ -29,7 +29,11 @@ prepareForEvidenceExplorer <- function(resultsFolder, shinyDataFolder) {
     exposureId <- subset$exposureId[1]
     outcomeId <- subset$outcomeId[1]
     databaseId <- subset$databaseId[1]
-    fileName <- sprintf("%s_e%s_o%s_%s.rds", tableName, exposureId, outcomeId, databaseId)
+    if (is.na(outcomeId)) {
+      fileName <- sprintf("%s_e%s_%s.rds", tableName, exposureId, databaseId)
+    } else {
+      fileName <- sprintf("%s_e%s_o%s_%s.rds", tableName, exposureId, outcomeId, databaseId)
+    }
     saveRDS(subset, file.path(shinyDataFolder, fileName))
   }
   
@@ -41,7 +45,7 @@ prepareForEvidenceExplorer <- function(resultsFolder, shinyDataFolder) {
     colnames(data) <- SqlRender::snakeCaseToCamelCase(colnames(data))
     
     if (tableName %in% dontMerge) {
-      subsets <- split(data, list(data$exposureId, data$outcomeId))
+      subsets <- split(data, paste(data$exposureId, data$outcomeId))
       invisible(lapply(subsets, saveSubset, tableName = tableName))
     } else {
       if (!overwrite && exists(camelCaseName, envir = .GlobalEnv)) {
