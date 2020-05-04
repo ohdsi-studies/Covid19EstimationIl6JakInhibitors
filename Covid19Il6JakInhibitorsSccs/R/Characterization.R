@@ -100,6 +100,7 @@ createCharacterization <- function(connectionDetails,
                                                              cohortTableIsTemp = TRUE,
                                                              covariateSettings = covariateSettings,
                                                              aggregated = TRUE)
+      covariateData <- fixZeroRowCovariateData(covariateData)
       FeatureExtraction::saveCovariateData(covariateData, echaracterizationFolder)
     }
   }
@@ -116,6 +117,7 @@ createCharacterization <- function(connectionDetails,
                                                              cohortTableIsTemp = TRUE,
                                                              covariateSettings = covariateSettings,
                                                              aggregated = TRUE)
+      covariateData <- fixZeroRowCovariateData(covariateData)
       FeatureExtraction::saveCovariateData(covariateData, eocharacterizationFolder)
     }
   }
@@ -130,3 +132,13 @@ createCharacterization <- function(connectionDetails,
     DROP TABLE #exposure_outcome;"
   DatabaseConnector::renderTranslateExecuteSql(connection, sql, oracleTempSchema = oracleTempSchema, progressBar = FALSE, reportOverallTime = FALSE)
 }
+
+fixZeroRowCovariateData <- function(covariateData) {
+  if (nrow(covariateData$covariates) == 0) {
+    covariateData$covariates <- ff::as.ffdf(data.frame(covariateId = -1, sumValue = 0, averageValue = 0))
+    covariateData$covariateRef <- ff::as.ffdf(data.frame(covariateId = -2, covariateName = "dummy", analysisId = 0))
+    covariateData$analysisRef <- ff::as.ffdf(data.frame(analysisId = -3, analysisName = "dummy"))
+  }
+  return(covariateData)
+}
+

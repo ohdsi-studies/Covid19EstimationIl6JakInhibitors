@@ -133,10 +133,12 @@ runSccsDiagnostics <- function(outputFolder, databaseId) {
   
   omr <- readRDS(file.path(outputFolder, "sccsOutput", "outcomeModelReference.rds"))
   sccsData <- SelfControlledCaseSeries::loadSccsData(file.path(outputFolder, "sccsOutput", omr$sccsDataFolder[1]))
-  
+  sccsDataSummary <- summary(sccsData)
+  nonZeroOutcomeIds <- sccsDataSummary$outcomeCounts$outcomeConceptId[sccsDataSummary$outcomeCounts$caseCount > 0]
   pathToCsv <- system.file("settings", "TosOfInterest.csv", package = "Covid19Il6JakInhibitorsSccs")
   tosOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)  
   outcomeIds <- unique(tosOfInterest$outcomeId)
+  outcomeIds <- outcomeIds[outcomeIds %in% nonZeroOutcomeIds]
   for (outcomeId in outcomeIds) {
     SelfControlledCaseSeries::plotAgeSpans(sccsData = sccsData,
                                            outcomeId = outcomeId,
