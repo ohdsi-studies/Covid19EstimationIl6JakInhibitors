@@ -36,6 +36,7 @@ How to run
   devtools::install_github("ohdsi/Cyclops")
   devtools::install_github("ohdsi/EmpiricalCalibration")
   devtools::install_github("ohdsi/SelfControlledCaseSeries")
+  devtools::install_github("ohdsi/OhdsiSharing")
   devtools::install_github("ohdsi-studies/Covid19EstimationHydroxychloroquine/Covid19Il6JakInhibitorsSccs")
   ```
 2. Execute the study by modifying and executing the following code:

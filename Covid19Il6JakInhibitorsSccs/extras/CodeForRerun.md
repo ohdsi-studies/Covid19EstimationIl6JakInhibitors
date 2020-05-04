@@ -12,6 +12,7 @@ Please use the same `outputFolder` as before. We can reuse most of what was alre
 
 1. First, update the package:
   ```r
+  devtools::install_github("ohdsi/OhdsiSharing")
   devtools::install_github("ohdsi-studies/Covid19EstimationHydroxychloroquine/Covid19Il6JakInhibitorsSccs")
   ```
   
