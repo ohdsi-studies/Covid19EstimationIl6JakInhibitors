@@ -244,8 +244,11 @@ exportMetadata <- function(outputFolder,
       covariateRef <- ff::as.ram(sccsEraData$covariateRef)
       
       exposureCovariateId <- covariateRef$covariateId[grepl(exposureOfInterestLabel, covariateRef$covariateName)]
-      
-      idx <- sccsEraData$covariates$covariateId == exposureCovariateId
+      if (is.null(exposureCovariateId) || length(exposureCovariateId) == 0) {
+        idx <- FALSE
+      } else {
+        idx <- sccsEraData$covariates$covariateId == exposureCovariateId
+      }
       if (!any(idx)) {
         observationDaysDist <- rep(0, 7)
         outcomeCount <- 0
@@ -260,11 +263,15 @@ exportMetadata <- function(outputFolder,
                                                                   exposedSubjects), ])
       }
       
-      idx <- sccsEraData$covariates$covariateId == exposureCovariateId
+      if (is.null(exposureCovariateId) || length(exposureCovariateId) == 0) {
+        idx <- FALSE
+      } else {
+        idx <- sccsEraData$covariates$covariateId == exposureCovariateId
+      }
       if (!any(idx)) {
         exposureDaysDist <- rep(0, 7)
         exposedOutcomeCount <- 0
-        mdrr <- NA
+        mdrr <- list(mdrr = NA)
       } else {
         exposedEras <- sccsEraData$covariates$rowId[idx, ]
         exposureDaysPerPerson <- aggregate(time ~ stratumId, sccsEraData$outcomes[ffbase::`%in%`(sccsEraData$outcomes$rowId,
