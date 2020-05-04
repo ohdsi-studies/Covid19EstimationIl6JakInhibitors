@@ -66,8 +66,9 @@ How to run
   cohortTable <- ""
   
   # Some meta-information that will be used by the export function:
-  # Please use a short and descriptive databaseId, e.g. OptumDOD
-  databaseId <- ""
+  databaseId <- "" # A short name of the database, to be used to create file names.
+  databaseName <- "" # The full name of the database
+  databaseDescription <- "" # A paragraph describing the database
 
   
   # If using Oracle, define a schema that can be used to emulate temp tables. Otherwise set as NULL:
@@ -80,11 +81,14 @@ How to run
           oracleTempSchema = oracleTempSchema,
           outputFolder = outputFolder,
           databaseId = databaseId,
+          databaseName = databaseName,
+          databaseDescription = databaseDescription,
           createCohorts = TRUE,
           runSccs = TRUE,
+          createCharacterization = TRUE,
           runSccsDiagnostics = TRUE,
           exportResults = TRUE,
-          maxCores = maxCores)
+          maxCores = maxCores) 
   ```
   
 3. Send the created zip file (and only the zip file) to the study coordinator. This can be done using the 'sccsIl6JakInhibitors' folder on the OHDSI SFTP server:
