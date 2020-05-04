@@ -1,3 +1,5 @@
+# This code is used by the package developer to run the code locally
+
 library(Covid19Il6JakInhibitorsSccs)
 
 options(fftempdir = "s:/FFtemp")

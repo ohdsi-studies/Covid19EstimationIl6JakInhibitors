@@ -1,43 +1,31 @@
-Self-Controlled Case Series Analysis of the Safety of IL-6 and JAK Inhibitors
-=============================================================================
+This page describes how to rerun the study, for those who already executed the first run. 
 
-IL-6 and JAK inhibitors are being considered for use in treatment and prophylaxis of COVID-19 in rapid clinical trials across the world. However, the full safety profiles of these drugs is unknown, and the current trials are unlikely to be powered or have sufficient follow-up time to evaluate most safety outcomes. The aim of this OHDSI study is to use existing retrospective data to evaluate the safety of IL-6 and JAK inhibitors, using the self-controlled case series (SCCS) design.
+What has changed?
+=================
 
-This study is part of the [OHDSI 2020 COVID-19 study-a-thon](https://www.ohdsi.org/covid-19-updates/).
-
-Requirements
-============
-
-- A database in [Common Data Model version 5](https://github.com/OHDSI/CommonDataModel) in one of these platforms: SQL Server, Oracle, PostgreSQL, IBM Netezza, Apache Impala, Amazon RedShift, or Microsoft APS.
-- R version 3.5.0 or newer
-- On Windows: [RTools](http://cran.r-project.org/bin/windows/Rtools/)
-- [Java](http://java.com)
-- 25 GB of free disk space
-
-See [here](https://ohdsi.github.io/MethodsLibrary/rSetup.html) for instructions on how to set up the R environment on Windows.
+The previous run accidentally created empty result files for the outcomes of interest. That will be fixed in this run. Also, the previous run did not create enough artifacts to support writing a paper about the study. This new run produces output somewhat similar to our cohort studies, and includes more descriptives including exposure cohort characterization and statistical power. These new results will be shown in a Shiny app, like our cohort studies.
 
 How to run
 ==========
 
-1. First, install the package:
+Please use the same `outputFolder` as before. We can reuse most of what was already computed.
+
+1. First, update the package:
   ```r
-  # Prevents errors due to packages being built for other R versions: 
-  Sys.setenv("R_REMOTES_NO_ERRORS_FROM_WARNINGS" = TRUE)
-
-  # First, it probably is best to make sure you are up-to-date on all existing packages. 
-  # Important: This code is best run in R, not RStudio, as RStudio may have some libraries 
-  # (like 'rlang') in use.
-  update.packages(ask = "graphics")
-
-  # When asked to update packages, select '3' ('none') (could be multiple times)
-  # When asked whether to install from source, select 'No' (could be multiple times)
-  install.packages("devtools")
-  devtools::install_github("ohdsi/ParallelLogger", ref = "develop")
-  devtools::install_github("ohdsi/Cyclops")
-  devtools::install_github("ohdsi/EmpiricalCalibration")
-  devtools::install_github("ohdsi/SelfControlledCaseSeries")
   devtools::install_github("ohdsi-studies/Covid19EstimationHydroxychloroquine/Covid19Il6JakInhibitorsSccs")
   ```
+  
+2. Next, delete the empty results files by changing and running this code:
+  ```r
+  library(Covid19Il6JakInhibitorsSccs)
+  
+  # The folder where the study intermediate and result files are written:
+  outputFolder <- "c:/Covid19Il6JakInhibitorsSccs"
+
+  # Note: this function will ask you if you're sure. Reply with 'y' if you're sure:
+  deleteHoiFiles(outputFolder)
+  ```
+
 2. Execute the study by modifying and executing the following code:
   ```r
   library(Covid19Il6JakInhibitorsSccs)
@@ -96,12 +84,3 @@ How to run
   # Upload results to OHDSI SFTP server:
   uploadResults(outputFolder, keyFileName, userName)
   ```
-
-Support
-=======
-* Developer questions/comments/feedback: <a href="http://forums.ohdsi.org/c/developers">OHDSI Forum</a>
-* We use the <a href="https://github.com/OHDSI/Covid19EstimationIl6JakInhibitors/issues">GitHub issue tracker</a> for all bugs/issues/enhancements
-
-License
-=======
-The Covid19Il6JakInhibitorsSccs package is licensed under Apache License 2.0

@@ -97,7 +97,7 @@ prepareForEvidenceExplorer <- function(resultsFolder, shinyDataFolder) {
 
 #' Launch the Evidence Explorer Shiny app
 #'
-#' @param shinyDataFolder  A folder where the Shiny data are stored. Use
+#' @param dataFolder       The folder where the Shiny data are stored. Use
 #'                         the \code{\link{prepareForEvidenceExplorer}} function to generate these files.
 #' @param blind            Should the user be blinded to the main results?
 #' @param launch.browser   Should the app be launched in your default browser, or in a Shiny window.
@@ -111,7 +111,7 @@ launchEvidenceExplorer <- function(dataFolder, blind = TRUE, launch.browser = FA
   ensure_installed("shiny")
   # ensure_installed("shinydashboard")
   ensure_installed("DT")
-  # ensure_installed("VennDiagram")
+  ensure_installed("VennDiagram")
   ensure_installed("htmltools")
   appDir <- system.file("shiny", "EvidenceExplorer", package = "Covid19Il6JakInhibitorsSccs")
   shinySettings <- list(dataFolder = dataFolder,

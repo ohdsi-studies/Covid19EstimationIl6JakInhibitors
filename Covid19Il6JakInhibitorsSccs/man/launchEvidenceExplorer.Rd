@@ -7,13 +7,13 @@
 launchEvidenceExplorer(dataFolder, blind = TRUE, launch.browser = FALSE)
 }
 \arguments{
+\item{dataFolder}{The folder where the Shiny data are stored. Use
+the \code{\link{prepareForEvidenceExplorer}} function to generate these files.}
+
 \item{blind}{Should the user be blinded to the main results?}
 
 \item{launch.browser}{Should the app be launched in your default browser, or in a Shiny window.
 Note: copying to clipboard will not work in a Shiny window.}
-
-\item{shinyDataFolder}{A folder where the Shiny data are stored. Use
-the \code{\link{prepareForEvidenceExplorer}} function to generate these files.}
 }
 \description{
 Launch the Evidence Explorer Shiny app

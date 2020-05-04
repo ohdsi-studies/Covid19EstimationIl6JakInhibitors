@@ -18,17 +18,21 @@ Imports:
     Cyclops,
     FeatureExtraction,
     EmpiricalCalibration (>= 2.0.2),
+	OhdsiSharing (>= 0.2.1),
     ff,
     ffbase,
     plyr,
     dplyr,
     tibble,
     readr
+Suggests:
+    VennDiagram,
+    shiny,
+    DT
 Remotes:
-    ohdsi/ParallelLogger,
-    ohdsi/Cyclops,
     ohdsi/SelfControlledCaseSeries,
-    ohdsi/FeatureExtraction
+    ohdsi/FeatureExtraction,
+    ohdsi/OhdsiSharing
 NeedsCompilation: no
 RoxygenNote: 7.1.0
 Encoding: UTF-8
